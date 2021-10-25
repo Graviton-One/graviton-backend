@@ -1,4 +1,4 @@
-use governance_poller::pools_reserves_poller::PoolsExtractor;
+use pollers::pools_reserves_poller::PoolsExtractor;
 
 #[tokio::main]
 async fn main() {

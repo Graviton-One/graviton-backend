@@ -19,15 +19,6 @@ table! {
     }
 }
 
-#[derive(Queryable,Debug)]
-pub struct Users {
-    id: i32,
-    address: String,
-    twitter_account: Option<String>,
-    external_address: Option<String>,
-    chain_type: Option<String>,
-}
-
 pub struct PricePoller {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
 }
@@ -57,15 +48,9 @@ impl PricePoller {
         .json::<Value>()
         .await
         .unwrap();
-        let v = resp["market_data"]["current_price"]["usd"].as_f64();
+        let v = resp["market_data"]["current_price"]["usd"].as_f64().unwrap();
         // we need to handle bad response from coingecko
-        if v.is_none() {
-            println!("set to 1");
-            1 as f64
-        } else {
-            v.unwrap()
-        }
-        diesel::insert(gton_price::table)
+        diesel::insert_into(gton_price::table).values(gton_price::price.eq(v)).execute(&self.pool.get().unwrap()).unwrap();
         sleep(Duration::from_secs((3600) as u64)).await;
         }
     }

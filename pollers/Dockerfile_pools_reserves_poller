@@ -1,7 +1,7 @@
 FROM rustlang/rust:nightly-buster as builder
 
-RUN USER=root cargo new --bin governance_poller
-WORKDIR /governance_poller
+RUN USER=root cargo new pollers
+WORKDIR /pollers
 
 # copy over your manifests
 COPY ./Cargo.toml ./Cargo.toml
@@ -15,7 +15,7 @@ COPY ./src ./src
 #COPY ./contracts ./contracts
 #COPY . .
 
-RUN cargo build --release --bin split_by_sources
+RUN cargo build --release --bin pools_reserves_poller
 
 FROM debian:buster-slim
 
@@ -28,9 +28,9 @@ RUN apt-get update && \
         --no-install-recommends
 RUN apt-get update && apt-get -y install ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /governance_poller/target/release/split_by_sources /governance_poller/split_by_sources
-WORKDIR /governance_poller/
+COPY --from=builder /pollers/target/release/pools_reserves_poller /pollers/pools_reserves_poller
+WORKDIR /pollers/
 EXPOSE 8088
 
 
-CMD ["/governance_poller/split_by_sources"]
+CMD ["/pollers/pools_reserves_poller"]

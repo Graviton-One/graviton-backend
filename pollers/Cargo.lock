@@ -582,24 +582,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "governance_poller"
-version = "0.1.0"
-dependencies = [
- "bigdecimal",
- "chrono",
- "diesel",
- "diesel-derive-enum",
- "dotenv",
- "ethcontract",
- "hex",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "web3",
-]
-
-[[package]]
 name = "h2"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1151,6 +1133,24 @@ name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
+
+[[package]]
+name = "pollers"
+version = "0.1.0"
+dependencies = [
+ "bigdecimal",
+ "chrono",
+ "diesel",
+ "diesel-derive-enum",
+ "dotenv",
+ "ethcontract",
+ "hex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "web3",
+]
 
 [[package]]
 name = "ppv-lite86"
