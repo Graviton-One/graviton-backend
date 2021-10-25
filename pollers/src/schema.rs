@@ -7,8 +7,9 @@ table! {
         name -> Varchar,
         coingeco_id -> Varchar,
         code -> Varchar,
-        chain_type -> Chain_type_enum,
+        chain_type -> ChainTypeEnum,
         rpc_url -> Varchar,
+        blocks_in_year -> Numeric,
         explorer_url -> Varchar,
         gton_address -> Varchar,
         meta -> Json,
@@ -37,9 +38,10 @@ table! {
         pool_id -> Int8,
         tvl -> Float8,
         total_locked -> Numeric,
-        alloc_point -> Numeric,
+        alloc_point -> Float8,
         apy -> Float8,
-        total_rewards -> Float8,
+        total_rewards -> Numeric,
+        farm_address -> Varchar,
         meta -> Json,
         farm_index -> Int8,
         last_updated -> Timestamp,
@@ -97,9 +99,10 @@ table! {
         chain_id -> Int8,
         tvl -> Float8,
         total_locked -> Numeric,
-        alloc_point -> Numeric,
+        alloc_point -> Float8,
         apy -> Float8,
-        total_rewards -> Float8,
+        total_rewards -> Numeric,
+        farm_address -> Varchar,
         meta -> Json,
         farm_index -> Int8,
         last_updated -> Timestamp,
@@ -111,12 +114,4 @@ joinable!(farms -> pools (pool_id));
 joinable!(pools -> dexes (dex_id));
 joinable!(staking -> chains (chain_id));
 
-allow_tables_to_appear_in_same_query!(
-    chains,
-    dexes,
-    farms,
-    gton_price,
-    pollers,
-    pools,
-    staking,
-);
+allow_tables_to_appear_in_same_query!(chains, dexes, farms, gton_price, pollers, pools, staking,);
