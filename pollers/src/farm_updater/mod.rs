@@ -25,7 +25,6 @@ pub struct StakesUpdater {
     total_locked: BigDecimal,
     alloc_point: f64,
     apy: f64,
-    total_rewards: BigDecimal,
 }
 
 #[derive(Clone, Debug, AsChangeset)]
@@ -35,7 +34,6 @@ pub struct FarmsUpdater {
     total_locked: BigDecimal,
     alloc_point: f64,
     apy: f64,
-    total_rewards: BigDecimal,
 }
 
 #[derive(Clone, Debug, QueryableByName)]
@@ -54,6 +52,8 @@ pub struct Staking {
     pub farm_address: String,
     #[sql_type = "Numeric"]
     pub blocks_in_year: BigDecimal,
+    #[sql_type = "Varchar"]
+    pub wormhole_address: String,
 }
 
 #[derive(Clone, Debug, QueryableByName)]
@@ -76,19 +76,37 @@ pub struct Farms {
     pub farm_address: String,
     #[sql_type = "Numeric"]
     pub blocks_in_year: BigDecimal,
+    #[sql_type = "Varchar"]
+    pub wormhole_address: String,
 }
 
 impl Farms {
     pub fn get_lp_farms_data(conn: &PgConnection) -> Vec<Farms> {
-        diesel::sql_query("select * from farms_from_poller;")
+        diesel::sql_query("select * from farms_for_poller;")
             .get_results(conn)
             .unwrap()
     }
 
     pub fn get_staking_farms_data(conn: &PgConnection) -> Vec<Staking> {
-        diesel::sql_query("select * from staking_from_poller;")
+        diesel::sql_query("select * from staking_for_poller;")
             .get_results(conn)
             .unwrap()
+    }
+
+    pub fn set_stake_data(stake_id: i64, query: &StakesUpdater, conn: &PgConnection) -> () {
+        diesel::update(staking::table)
+            .filter(staking::id.eq(stake_id))
+            .set(query)
+            .execute(conn)
+            .unwrap();
+    }
+
+    pub fn set_farm_data(farm_id: i64, query: &FarmsUpdater, conn: &PgConnection) -> () {
+        diesel::update(farms::table)
+            .filter(farms::id.eq(farm_id))
+            .set(query)
+            .execute(conn)
+            .unwrap();
     }
 }
 
@@ -102,29 +120,34 @@ pub fn create_instance(rpc_url: &str) -> Web3Instance {
     web3::Web3::new(http)
 }
 
-pub async fn get_total_supply(web3: &Web3Instance, pool: Address) -> f64 {
-    let contract = Contract::from_json(web3.eth(), pool, include_bytes!("./abi/erc20.json"))
+pub async fn get_gton_to_relict_nums(web3: &Web3Instance, 
+    wormhole: Address) -> (U256,U256) {
+    let contract = Contract::from_json(
+        web3.eth(), wormhole, include_bytes!("./abi/wormhole.json"))
         .expect("error contract creating");
-    let res = contract
-        .query("totalSupply", (), None, Options::default(), None)
+  println!("holw addr: {:?}:{:?}",wormhole,web3);
+    let res: (U256, U256) = contract
+        .query("getValues", (), None, Options::default(), None)
         .await
         .unwrap();
-    prepare_amount(res, 18)
+    res
 }
 
 pub async fn get_from_farm(
     web3: &Web3Instance,
     farm_address: Address,
     farm_index: U256,
-) -> (U256, U256, U256, U256, U256) {
-    let contract = Contract::from_json(web3.eth(), farm_address, include_bytes!("./abi/farm.json"))
+) -> (U256, U256, U256, U256) {
+    let contract = Contract::from_json(
+        web3.eth(), farm_address, include_bytes!("./abi/farm.json"))
         .expect("error contract creating");
-    let res: (U256, U256, U256, U256, U256) = contract
+  println!("farm addr: {:?}:{:?}:{:?}",farm_address,farm_index,web3);
+    let res: (U256, U256, U256, U256) = contract
         .query("getPoolData", farm_index, None, Options::default(), None)
         .await
         .unwrap();
-    // ap tap tc vl
-    (res.0, res.1, res.2, res.3, res.4)
+    // ap tap vl
+    (res.0, res.1, res.2,res.3)
 }
 
 pub fn calc_lp_price(tvl: f64, total_supply: f64) -> f64 {
@@ -137,13 +160,12 @@ pub fn calc_lp_liquidity(lp_price: f64, lp_locked: f64) -> f64 {
 
 pub fn calculate_apy(
     total_locked: f64,
-    gton_price: f64,
-    amount_per_block: i64,
-    blocks_in_year: i64,
+    relict_price: f64,
+    token_per_year: f64
 ) -> f64 {
     // total earn per year / total locked on contract
     // all values are compatible to dollar value
-    (blocks_in_year * amount_per_block) as f64 * gton_price / total_locked * 100 as f64
+    token_per_year * relict_price / total_locked / 10f64.powf(18f64) * 100 as f64
 }
 
 pub async fn get_gton_price(conn: &PgConnection) -> f64 {
@@ -169,37 +191,42 @@ impl FarmExtractor {
         let pool = Pool::builder().build(manager).expect("pool build");
         FarmExtractor { pool }
     }
+
     pub async fn update_stakes(&self) -> () {
         loop {
-            let farms: Vec<Staking> = Farms::get_staking_farms_data(&self.pool.get().unwrap());
+            let farms: Vec<Staking> = 
+                Farms::get_staking_farms_data(&self.pool.get().unwrap());
             let gton_price = get_gton_price(&self.pool.get().unwrap()).await;
             for farm in farms {
                 let web3 = create_instance(&farm.rpc_url);
                 // ap tap tc vl
-                //
-                let farm_index: U256 = farm.farm_index.into();
-                let (alloc_point, total_alloc_point, total_claimed, value_locked, mint_per_block) =
+                let (alloc_point, total_alloc_point, value_locked, mint_per_block) =
                     get_from_farm(
                         &web3,
                         farm.farm_address.parse().unwrap(),
                         farm.farm_index.into(),
                     )
                     .await;
-                let tvl = gton_price * value_locked.to_f64_lossy();
+                let tvl = gton_price * value_locked.to_f64_lossy() / 10f64.powf(18f64);
+                let share = alloc_point.to_f64_lossy() / total_alloc_point.to_f64_lossy();
+                let nums = get_gton_to_relict_nums(&web3, 
+                        farm.wormhole_address.parse().unwrap()).await;
+                let gton_to_relict_price = 
+                    nums.0.to_f64_lossy() * gton_price / nums.1.to_f64_lossy();
                 let apy = calculate_apy(
                     tvl,
-                    gton_price,
-                    mint_per_block.as_u64() as i64,
-                    farm.blocks_in_year.to_string().parse().unwrap(),
+                    gton_to_relict_price,
+                    share *
+                    mint_per_block.as_u64() as f64 *
+                    farm.blocks_in_year.to_string().parse::<f64>().unwrap(),
                 );
-                let share = alloc_point.to_f64_lossy() / total_alloc_point.to_f64_lossy();
-                let query = FarmsUpdater {
+                let query = StakesUpdater {
                     tvl,
                     total_locked: value_locked.to_string().parse().unwrap(),
                     alloc_point: share,
                     apy,
-                    total_rewards: total_claimed.to_string().parse().unwrap(),
                 };
+                Farms::set_stake_data(farm.farm_id, &query, &self.pool.get().unwrap());
             }
             sleep(Duration::from_secs((15) as u64)).await;
         }
@@ -211,9 +238,7 @@ impl FarmExtractor {
             for farm in farms {
                 let web3 = create_instance(&farm.rpc_url);
                 // ap tap tc vl
-                //
-                let farm_index: U256 = farm.farm_index.into();
-                let (alloc_point, total_alloc_point, total_claimed, value_locked, mint_per_block) =
+                let (alloc_point, total_alloc_point, value_locked, mint_per_block) =
                     get_from_farm(
                         &web3,
                         farm.farm_address.parse().unwrap(),
@@ -224,21 +249,27 @@ impl FarmExtractor {
                     farm.pool_tvl,
                     farm.pool_lp_supply.to_string().parse().unwrap(),
                 );
-                let tvl = lp_price * value_locked.to_f64_lossy();
+                let tvl = lp_price * value_locked.to_f64_lossy() / 10f64.powf(18f64);
+                let share = alloc_point.to_f64_lossy() / total_alloc_point.to_f64_lossy();
+                let nums = get_gton_to_relict_nums(&web3, 
+                        farm.wormhole_address.parse().unwrap()).await;
+                let gton_to_relict_price = 
+                    nums.0.to_f64_lossy() * gton_price / nums.1.to_f64_lossy();
                 let apy = calculate_apy(
                     tvl,
-                    gton_price,
-                    mint_per_block.as_u64() as i64,
-                    farm.blocks_in_year.to_string().parse().unwrap(),
+                    gton_to_relict_price,
+                    share *
+                    mint_per_block.as_u64() as f64 *
+                    farm.blocks_in_year.to_string().parse::<f64>().unwrap(),
                 );
-                let share = alloc_point.to_f64_lossy() / total_alloc_point.to_f64_lossy();
+                println!("apy: {:?}\n tvl: {:?}",apy,tvl);
                 let query = FarmsUpdater {
                     tvl,
                     total_locked: value_locked.to_string().parse().unwrap(),
                     alloc_point: share,
                     apy,
-                    total_rewards: total_claimed.to_string().parse().unwrap(),
                 };
+                Farms::set_farm_data(farm.farm_id, &query, &self.pool.get().unwrap());
             }
             sleep(Duration::from_secs((15) as u64)).await;
         }

@@ -1,7 +1,7 @@
 FROM rustlang/rust:nightly-buster as builder
 
-RUN USER=root cargo new --bin gton_api_server
-WORKDIR /gton_api_server
+RUN USER=root cargo new --bin api
+WORKDIR /api
 
 # copy over your manifests
 COPY ./Cargo.toml ./Cargo.toml
@@ -28,9 +28,9 @@ RUN apt-get update && \
         --no-install-recommends
 RUN apt-get update && apt-get -y install ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /gton_api_server/target/release/gton_api_server /gton_api_server/gton_api_server
-WORKDIR /gton_api_server/
+COPY --from=builder /api/target/release/api /api/api
+WORKDIR /api/
 EXPOSE 8088
 
 
-CMD ["/gton_api_server/gton_api_server"]
+CMD ["/api/api"]

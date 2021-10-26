@@ -127,6 +127,7 @@ pub async fn get_pool_reserves(
         include_bytes!("./abi/pancakeV2pair.json"),
     )
     .expect("error contract creating");
+    println!("contract addr: {:?} \n web3: {:?}",pool_address,web3);
     let (token_a_reserves, token_b_reserves, _): (U256, U256, U256) = contract
         .query("getReserves", (), None, Options::default(), None)
         .await?;

@@ -2,7 +2,7 @@
 extern crate diesel;
 #[macro_use]
 extern crate serde_json;
-use diesel::{
+pub use diesel::{
     PgConnection,
     r2d2::{
         ConnectionManager,
@@ -11,5 +11,6 @@ use diesel::{
 };
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
-pub mod schema;
 pub mod farming;
+pub mod pools;
+pub mod staking;
