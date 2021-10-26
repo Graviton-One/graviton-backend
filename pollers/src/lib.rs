@@ -10,8 +10,9 @@ use diesel::{
 };
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
+pub mod schema;
+pub mod pools_reserves_poller;
+pub mod gton_price_poller;
+pub mod pollers;
 pub mod db_types;
 pub mod farm_updater;
-pub mod pollers;
-pub mod pools_reserves_poller;
-pub mod schema;
