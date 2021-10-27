@@ -85,6 +85,8 @@ pub struct FarmsView {
         pub alloc_point: f64,
         #[sql_type="Timestamp"]
         pub farm_last_update: chrono::NaiveDateTime,
+        #[sql_type="BigInt"]
+        pub dex_id: i64,
 }
 
 impl FarmsView {

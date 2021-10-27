@@ -17,9 +17,9 @@ pub async fn get_farms_page_info(
     let conn = pool.get()?;
     Ok(HttpResponse::Ok().json(json!(
         {
-            "achiei": FarmsView::get(&conn).await?,
-            "total_values": FarmsView::totals_by_dex(&conn).await?,
-            "split_by_sources": FarmsView::totals_by_chain(&conn).await?
+            "farms": FarmsView::get(&conn).await?,
+            "tvl_by_dex": FarmsView::totals_by_dex(&conn).await?,
+            "tvl_by_chain": FarmsView::totals_by_chain(&conn).await?
         }
     )))
 }

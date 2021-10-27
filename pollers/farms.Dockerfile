@@ -1,6 +1,6 @@
 FROM rustlang/rust:nightly-buster as builder
 
-RUN USER=root cargo new pollers
+RUN USER=root cargo new --bin pollers
 WORKDIR /pollers
 
 # copy over your manifests
@@ -15,7 +15,7 @@ COPY ./src ./src
 #COPY ./contracts ./contracts
 #COPY . .
 
-RUN cargo build --release --bin pools_reserves_poller
+RUN cargo build --release --bin farms
 
 FROM debian:buster-slim
 
@@ -28,9 +28,7 @@ RUN apt-get update && \
         --no-install-recommends
 RUN apt-get update && apt-get -y install ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /pollers/target/release/pools_reserves_poller /pollers/pools_reserves_poller
+COPY --from=builder /pollers/target/release/farms /pollers/farms
 WORKDIR /pollers/
 EXPOSE 8088
-
-
-CMD ["/pollers/pools_reserves_poller"]
+CMD ["/pollers/farms"]

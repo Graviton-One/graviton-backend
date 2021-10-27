@@ -1,7 +1,7 @@
 FROM rustlang/rust:nightly-buster as builder
 
-RUN USER=root cargo new --bin governance_poller
-WORKDIR /governance_poller
+RUN USER=root cargo new --bin pollers
+WORKDIR /pollers
 
 # copy over your manifests
 COPY ./Cargo.toml ./Cargo.toml
@@ -15,7 +15,7 @@ COPY ./src ./src
 #COPY ./contracts ./contracts
 #COPY . .
 
-RUN cargo build --release --bin tvl_poller
+RUN cargo build --release --bin gton_price
 
 FROM debian:buster-slim
 
@@ -28,9 +28,7 @@ RUN apt-get update && \
         --no-install-recommends
 RUN apt-get update && apt-get -y install ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /governance_poller/target/release/tvl_poller /governance_poller/tvl_poller
-WORKDIR /governance_poller/
+COPY --from=builder /pollers/target/release/gton_price /pollers/gton_price
+WORKDIR /pollers/
 EXPOSE 8088
-
-
-CMD ["/governance_poller/tvl_poller"]
+CMD ["/pollers/gton_price"]

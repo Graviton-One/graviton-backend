@@ -247,7 +247,8 @@ impl FarmExtractor {
                     .await;
                 let lp_price: f64 = calc_lp_price(
                     farm.pool_tvl,
-                    farm.pool_lp_supply.to_string().parse().unwrap(),
+                    farm.pool_lp_supply.to_string().parse::<f64>().unwrap() /
+                                    10f64.powf(18f64),
                 );
                 let tvl = lp_price * value_locked.to_f64_lossy() / 10f64.powf(18f64);
                 let share = alloc_point.to_f64_lossy() / total_alloc_point.to_f64_lossy();

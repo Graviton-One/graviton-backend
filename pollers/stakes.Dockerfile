@@ -1,7 +1,7 @@
 FROM rustlang/rust:nightly-buster as builder
 
-RUN USER=root cargo new --bin governance_poller
-WORKDIR /governance_poller
+RUN USER=root cargo new --bin pollers
+WORKDIR /pollers
 
 # copy over your manifests
 COPY ./Cargo.toml ./Cargo.toml
@@ -15,7 +15,7 @@ COPY ./src ./src
 #COPY ./contracts ./contracts
 #COPY . .
 
-RUN cargo build --release --bin hot_balances
+RUN cargo build --release --bin stakes
 
 FROM debian:buster-slim
 
@@ -28,9 +28,7 @@ RUN apt-get update && \
         --no-install-recommends
 RUN apt-get update && apt-get -y install ca-certificates libssl-dev && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /governance_poller/target/release/hot_balances /governance_poller/hot_balances
-WORKDIR /governance_poller/
+COPY --from=builder /pollers/target/release/stakes /pollers/stakes
+WORKDIR /pollers/
 EXPOSE 8088
-
-
-CMD ["/governance_poller/hot_balances"]
+CMD ["/pollers/stakes"]
